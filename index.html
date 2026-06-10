@@ -213,15 +213,17 @@ class Tank {
         this.dir = dir;
         this.color = color;
         this.isPlayer = isPlayer;
-        this.speed = isPlayer ? 0.08 : 0.03;
+        this.speed = isPlayer ? 0.07 : 0.015;
         this.size = CELL_SIZE - 4;
         this.halfSize = this.size / 2;
         this.alive = true;
-        this.moveTimer = 0;
+        this.moveTimer = 60 + Math.random() * 40;
         this.moveDir = dir;
-        this.shootTimer = 0;
-        this.shootDelay = isPlayer ? 30 : 120 + Math.random() * 60;
+        this.shootTimer = 60 + Math.random() * 40;
+        this.shootDelay = isPlayer ? 30 : 150 + Math.random() * 80;
         this.flashTimer = 0;
+        this.cellX = Math.floor(x / CELL_SIZE);
+        this.cellY = Math.floor(y / CELL_SIZE);
         this.type = 'normal'; // normal, fast, heavy
     }
 
@@ -298,7 +300,7 @@ class Tank {
 
         if (this.moveTimer <= 0) {
             // AI决策 - 有概率朝向玩家
-            if (player && player.alive && Math.random() < 0.4) {
+            if (player && player.alive && Math.random() < 0.35) {
                 let dx = player.x - this.x;
                 let dy = player.y - this.y;
                 if (Math.abs(dx) > Math.abs(dy)) {
@@ -307,14 +309,17 @@ class Tank {
                     this.moveDir = dy > 0 ? DIR_DOWN : DIR_UP;
                 }
             } else {
-                this.moveDir = Math.floor(Math.random() * 4);
+                // 优先选择前进方向，减少原地转圈
+                let choices = [this.moveDir, Math.floor(Math.random() * 4), Math.floor(Math.random() * 4)];
+                this.moveDir = choices[Math.floor(Math.random() * choices.length)];
             }
-            this.moveTimer = 30 + Math.random() * 60;
+            this.moveTimer = 50 + Math.random() * 80;
         }
 
-        // 一定概率改变方向
-        if (Math.random() < 0.005) {
+        // 偶尔改变方向（降低概率）
+        if (Math.random() < 0.003) {
             this.moveDir = Math.floor(Math.random() * 4);
+            this.moveTimer = 40 + Math.random() * 60;
         }
 
         this.dir = this.moveDir;
@@ -334,7 +339,9 @@ class Tank {
             this.x = nx;
             this.y = ny;
         } else {
-            this.moveTimer = 0; // 撞墙后重新选择方向
+            // 撞墙后立即选择新方向
+            this.moveDir = Math.floor(Math.random() * 4);
+            this.moveTimer = 10 + Math.random() * 30;
         }
     }
 
@@ -385,7 +392,7 @@ class Tank {
     shoot() {
         let bx = this.x;
         let by = this.y;
-        let speed = this.isPlayer ? 0.2 : 0.12;
+        let speed = this.isPlayer ? 0.2 : 0.08;
         let bullet = new Bullet(bx, by, this.dir, speed, this.isPlayer);
         bullets.push(bullet);
     }
@@ -616,13 +623,15 @@ function createMap() {
 
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
-            // 不在地图边缘和基地周围生成
+            // 不在地图边缘生成
             if (r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1) continue;
             if (map[r][c] !== EMPTY) continue;
-            // 基地保护区域不放置障碍
+            // 基地保护区域不放置障碍（扩大范围）
             if (Math.abs(c - bx) <= 2 && Math.abs(r - by) <= 2) continue;
-            // 出生点不放置障碍
-            if (r < 3 && (c < 3 || c > COLS - 4)) continue;
+            // 出生点保护区域（加大到4行4列，确保坦克出生后有足够空间移动）
+            if (r < 5 && (c < 4 || c > COLS - 5)) continue;
+            // 玩家出生点保护
+            if (r >= by - 3 && r <= by && Math.abs(c - bx) <= 3) continue;
 
             if (Math.random() < density) {
                 if (Math.random() < 0.2) {
@@ -697,44 +706,85 @@ function drawMap(ctx) {
     }
 }
 
+// 检查某个单元格位置是否可以让坦克安全出生
+function isSpawnCellClear(cellX, cellY) {
+    // 检查该格及其周围是否都是空地
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            let cr = cellY + dr;
+            let cc = cellX + dc;
+            if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS) continue;
+            if (map[cr][cc] !== EMPTY) return false;
+        }
+    }
+    return true;
+}
+
 // 生成敌人
 function spawnEnemy() {
     if (enemiesSpawned >= totalEnemiesThisWave) return;
     if (enemiesActive.filter(e => e.alive).length >= maxActiveEnemies) return;
 
-    let spawnPoints = [
-        { x: 1.5, y: 0.5 },
-        { x: COLS - 2.5, y: 0.5 },
-        { x: 0.5, y: 0.5 }
+    // 使用整数格坐标的出生点（确保在保护区域内）
+    let spawnCells = [
+        { cx: 1, cy: 1 },
+        { cx: 2, cy: 1 },
+        { cx: COLS - 2, cy: 1 },
+        { cx: COLS - 3, cy: 1 },
+        { cx: 1, cy: 2 },
+        { cx: COLS - 2, cy: 2 }
     ];
 
-    let sp = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
-    let sx = sp.x * CELL_SIZE;
-    let sy = sp.y * CELL_SIZE;
+    // 随机打乱出生点顺序
+    let shuffled = spawnCells.sort(() => Math.random() - 0.5);
 
-    // 检查出生点是否被占据
-    for (let tank of enemiesActive) {
-        if (!tank.alive) continue;
-        let dx = sx - tank.x;
-        let dy = sy - tank.y;
-        if (Math.abs(dx) < CELL_SIZE && Math.abs(dy) < CELL_SIZE) return;
+    let chosenCell = null;
+    let sx = 0, sy = 0;
+
+    for (let sc of shuffled) {
+        if (!isSpawnCellClear(sc.cx, sc.cy)) continue;
+
+        // 检查是否被其他坦克占据
+        let occupied = false;
+        let pixelX = (sc.cx + 0.5) * CELL_SIZE;
+        let pixelY = (sc.cy + 0.5) * CELL_SIZE;
+
+        for (let tank of enemiesActive) {
+            if (!tank.alive) continue;
+            let dx = pixelX - tank.x;
+            let dy = pixelY - tank.y;
+            if (Math.abs(dx) < CELL_SIZE && Math.abs(dy) < CELL_SIZE) {
+                occupied = true;
+                break;
+            }
+        }
+        if (occupied) continue;
+
+        if (player && player.alive) {
+            let dx = pixelX - player.x;
+            let dy = pixelY - player.y;
+            if (Math.abs(dx) < CELL_SIZE * 2 && Math.abs(dy) < CELL_SIZE * 2) continue;
+        }
+
+        chosenCell = sc;
+        sx = pixelX;
+        sy = pixelY;
+        break;
     }
-    if (player && player.alive) {
-        let dx = sx - player.x;
-        let dy = sy - player.y;
-        if (Math.abs(dx) < CELL_SIZE && Math.abs(dy) < CELL_SIZE) return;
-    }
+
+    // 没有合适的出生点
+    if (!chosenCell) return;
 
     let colors = ['#ff4444', '#ff8844', '#ff4466', '#cc4444', '#ee5555'];
     let color = colors[Math.floor(Math.random() * colors.length)];
 
     let enemy = new Tank(sx, sy, DIR_DOWN, color, false);
-    enemy.flashTimer = 40;
-    enemy.shootDelay = 80 + Math.random() * 100;
+    enemy.flashTimer = 50;
+    enemy.shootDelay = 150 + Math.random() * 100;
 
-    // 随着波次增加，敌人更快
-    enemy.speed = 0.03 + wave * 0.005;
-    if (enemy.speed > 0.08) enemy.speed = 0.08;
+    // 随着波次增加，敌人略微加快（但总体保持可玩性）
+    enemy.speed = 0.015 + wave * 0.002;
+    if (enemy.speed > 0.04) enemy.speed = 0.04;
 
     enemiesActive.push(enemy);
     enemiesSpawned++;
@@ -756,11 +806,11 @@ function playerDeath() {
 }
 
 function respawnPlayer() {
-    let sx = basePosition.x * CELL_SIZE;
-    let sy = (basePosition.y - 1) * CELL_SIZE;
+    let sx = (basePosition.x + 0.5) * CELL_SIZE;
+    let sy = (basePosition.y - 0.5) * CELL_SIZE;
 
     player = new Tank(sx, sy, DIR_UP, '#00cc44', true);
-    player.flashTimer = 60;
+    player.flashTimer = 70;
 }
 
 // 基地被摧毁
