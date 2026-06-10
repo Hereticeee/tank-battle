@@ -213,7 +213,7 @@ class Tank {
         this.dir = dir;
         this.color = color;
         this.isPlayer = isPlayer;
-        this.speed = isPlayer ? 0.025 : 0.005;
+        this.speed = isPlayer ? 0.012 : 0.0025;
         this.size = CELL_SIZE - 4;
         this.halfSize = this.size / 2;
         this.alive = true;
@@ -611,11 +611,12 @@ function createMap() {
     let bx = basePosition.x;
     let by = basePosition.y;
     map[by][bx] = BASE;
-    map[by][bx - 1] = BRICK;
-    map[by][bx + 1] = BRICK;
-    map[by - 1][bx - 1] = BRICK;
-    map[by - 1][bx] = BRICK;
-    map[by - 1][bx + 1] = BRICK;
+    // 基地U型防护墙（左右各一块，上方两角，中间留空给玩家通行）
+    map[by][bx - 1] = BRICK;       // 基地左侧
+    map[by][bx + 1] = BRICK;       // 基地右侧
+    map[by - 1][bx - 1] = BRICK;   // 左上角砖
+    map[by - 1][bx + 1] = BRICK;   // 右上角砖
+    // 注意：(bx, by-1) 即基地正上方不放置砖块，留给玩家出生和通行
 
     // 随机生成墙壁
     let density = 0.15 + wave * 0.02;
@@ -628,10 +629,10 @@ function createMap() {
             if (map[r][c] !== EMPTY) continue;
             // 基地保护区域不放置障碍（扩大范围）
             if (Math.abs(c - bx) <= 2 && Math.abs(r - by) <= 2) continue;
-            // 出生点保护区域（加大到4行4列，确保坦克出生后有足够空间移动）
-            if (r < 5 && (c < 4 || c > COLS - 5)) continue;
-            // 玩家出生点保护
-            if (r >= by - 3 && r <= by && Math.abs(c - bx) <= 3) continue;
+            // 出生点保护区域（行0-4，左侧列0-4，右侧列16-19）
+            if (r < 6 && (c < 5 || c > COLS - 6)) continue;
+            // 玩家出生点及基地周围保护
+            if (r >= by - 4 && r <= by && Math.abs(c - bx) <= 3) continue;
 
             if (Math.random() < density) {
                 if (Math.random() < 0.2) {
@@ -708,16 +709,9 @@ function drawMap(ctx) {
 
 // 检查某个单元格位置是否可以让坦克安全出生
 function isSpawnCellClear(cellX, cellY) {
-    // 检查该格及其周围是否都是空地
-    for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-            let cr = cellY + dr;
-            let cc = cellX + dc;
-            if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS) continue;
-            if (map[cr][cc] !== EMPTY) return false;
-        }
-    }
-    return true;
+    // 坦克出生时完全位于单个格子内（半格偏移），只需检查该格是否为空
+    if (cellY < 0 || cellY >= ROWS || cellX < 0 || cellX >= COLS) return false;
+    return map[cellY][cellX] === EMPTY;
 }
 
 // 生成敌人
@@ -785,8 +779,8 @@ function spawnEnemy() {
     enemy.shootDelay = 150 + Math.random() * 100;
 
     // 随着波次增加，敌人略微加快（但总体保持可玩性）
-    enemy.speed = 0.005 + wave * 0.0007;
-    if (enemy.speed > 0.013) enemy.speed = 0.013;
+    enemy.speed = 0.0025 + wave * 0.00035;
+    if (enemy.speed > 0.0065) enemy.speed = 0.0065;
 
     enemiesActive.push(enemy);
     enemiesSpawned++;
@@ -808,8 +802,9 @@ function playerDeath() {
 }
 
 function respawnPlayer() {
+    // 玩家出生在基地正上方两格处（砖墙保护圈外侧）
     let sx = (basePosition.x + 0.5) * CELL_SIZE;
-    let sy = (basePosition.y - 0.5) * CELL_SIZE;
+    let sy = (basePosition.y - 2.5) * CELL_SIZE;
 
     player = new Tank(sx, sy, DIR_UP, '#00cc44', true);
     player.flashTimer = 70;
