@@ -213,7 +213,7 @@ class Tank {
         this.dir = dir;
         this.color = color;
         this.isPlayer = isPlayer;
-        this.speed = isPlayer ? 0.07 : 0.015;
+        this.speed = isPlayer ? 0.025 : 0.005;
         this.size = CELL_SIZE - 4;
         this.halfSize = this.size / 2;
         this.alive = true;
@@ -725,14 +725,16 @@ function spawnEnemy() {
     if (enemiesSpawned >= totalEnemiesThisWave) return;
     if (enemiesActive.filter(e => e.alive).length >= maxActiveEnemies) return;
 
-    // 使用整数格坐标的出生点（确保在保护区域内）
+    // 使用整数格坐标的出生点（在保护区域中心，远离边缘）
     let spawnCells = [
-        { cx: 1, cy: 1 },
-        { cx: 2, cy: 1 },
-        { cx: COLS - 2, cy: 1 },
-        { cx: COLS - 3, cy: 1 },
+        { cx: 1, cy: 3 },
+        { cx: 2, cy: 3 },
         { cx: 1, cy: 2 },
-        { cx: COLS - 2, cy: 2 }
+        { cx: 2, cy: 2 },
+        { cx: COLS - 2, cy: 3 },
+        { cx: COLS - 3, cy: 3 },
+        { cx: COLS - 2, cy: 2 },
+        { cx: COLS - 3, cy: 2 }
     ];
 
     // 随机打乱出生点顺序
@@ -783,8 +785,8 @@ function spawnEnemy() {
     enemy.shootDelay = 150 + Math.random() * 100;
 
     // 随着波次增加，敌人略微加快（但总体保持可玩性）
-    enemy.speed = 0.015 + wave * 0.002;
-    if (enemy.speed > 0.04) enemy.speed = 0.04;
+    enemy.speed = 0.005 + wave * 0.0007;
+    if (enemy.speed > 0.013) enemy.speed = 0.013;
 
     enemiesActive.push(enemy);
     enemiesSpawned++;
