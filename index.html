@@ -219,8 +219,8 @@ class Tank {
         this.alive = true;
         this.moveTimer = 60 + Math.random() * 40;
         this.moveDir = dir;
-        this.shootTimer = 60 + Math.random() * 40;
-        this.shootDelay = isPlayer ? 30 : 150 + Math.random() * 80;
+        this.shootTimer = 120 + Math.random() * 80;
+        this.shootDelay = isPlayer ? 30 : 300 + Math.random() * 160;
         this.flashTimer = 0;
         this.cellX = Math.floor(x / CELL_SIZE);
         this.cellY = Math.floor(y / CELL_SIZE);
@@ -776,7 +776,7 @@ function spawnEnemy() {
 
     let enemy = new Tank(sx, sy, DIR_DOWN, color, false);
     enemy.flashTimer = 50;
-    enemy.shootDelay = 150 + Math.random() * 100;
+    enemy.shootDelay = 300 + Math.random() * 200;
 
     // 随着波次增加，敌人略微加快（但总体保持可玩性）
     enemy.speed = 0.0025 + wave * 0.00035;
