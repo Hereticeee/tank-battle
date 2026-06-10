@@ -33,9 +33,11 @@
 
 ## 🚀 快速开始
 
+🌐 **在线游玩:** [https://hereticeee.github.io/tank-battle/](https://hereticeee.github.io/tank-battle/)
+
 1. 克隆仓库
 ```bash
-git clone https://github.com/YOUR_USERNAME/tank-battle.git
+git clone https://github.com/Hereticeee/tank-battle.git
 ```
 
 2. 直接用浏览器打开 `index.html` 即可开始游戏
