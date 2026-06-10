@@ -213,7 +213,7 @@ class Tank {
         this.dir = dir;
         this.color = color;
         this.isPlayer = isPlayer;
-        this.speed = isPlayer ? 0.012 : 0.0025;
+        this.speed = isPlayer ? 0.014 : 0.003;
         this.size = CELL_SIZE - 4;
         this.halfSize = this.size / 2;
         this.alive = true;
@@ -607,16 +607,20 @@ function createMap() {
         map[r] = new Array(COLS).fill(EMPTY);
     }
 
-    // 基地
+    // 基地 U 型防护墙
     let bx = basePosition.x;
     let by = basePosition.y;
     map[by][bx] = BASE;
-    // 基地U型防护墙（左右各一块，上方两角，中间留空给玩家通行）
-    map[by][bx - 1] = BRICK;       // 基地左侧
-    map[by][bx + 1] = BRICK;       // 基地右侧
-    map[by - 1][bx - 1] = BRICK;   // 左上角砖
-    map[by - 1][bx + 1] = BRICK;   // 右上角砖
-    // 注意：(bx, by-1) 即基地正上方不放置砖块，留给玩家出生和通行
+    // 基地左右两侧砖墙
+    map[by][bx - 1] = BRICK;       // 基地左侧 (8,14)
+    map[by][bx + 1] = BRICK;       // 基地右侧 (10,14)
+    // 上方完整横排（U型的顶部横梁）
+    map[by - 1][bx - 1] = BRICK;   // 左上 (8,13)
+    map[by - 1][bx] = BRICK;       // 正上 (9,13)
+    map[by - 1][bx + 1] = BRICK;   // 右上 (10,13)
+    // U 型两侧向下延伸
+    map[by - 2][bx - 1] = BRICK;   // 左侧立柱上段 (8,12)
+    map[by - 2][bx + 1] = BRICK;   // 右侧立柱上段 (10,12)
 
     // 随机生成墙壁
     let density = 0.15 + wave * 0.02;
@@ -779,8 +783,8 @@ function spawnEnemy() {
     enemy.shootDelay = 300 + Math.random() * 200;
 
     // 随着波次增加，敌人略微加快（但总体保持可玩性）
-    enemy.speed = 0.0025 + wave * 0.00035;
-    if (enemy.speed > 0.0065) enemy.speed = 0.0065;
+    enemy.speed = 0.003 + wave * 0.0004;
+    if (enemy.speed > 0.008) enemy.speed = 0.008;
 
     enemiesActive.push(enemy);
     enemiesSpawned++;
@@ -802,9 +806,9 @@ function playerDeath() {
 }
 
 function respawnPlayer() {
-    // 玩家出生在基地正上方两格处（砖墙保护圈外侧）
+    // 玩家出生在 U 型围栏正上方外侧
     let sx = (basePosition.x + 0.5) * CELL_SIZE;
-    let sy = (basePosition.y - 2.5) * CELL_SIZE;
+    let sy = (basePosition.y - 3.5) * CELL_SIZE;
 
     player = new Tank(sx, sy, DIR_UP, '#00cc44', true);
     player.flashTimer = 70;
