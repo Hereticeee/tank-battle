@@ -607,20 +607,21 @@ function createMap() {
         map[r] = new Array(COLS).fill(EMPTY);
     }
 
-    // 基地 U 型防护墙
+    // 基地 U 型防护墙（开口朝上，底部连接）
     let bx = basePosition.x;
     let by = basePosition.y;
     map[by][bx] = BASE;
-    // 基地左右两侧砖墙
-    map[by][bx - 1] = BRICK;       // 基地左侧 (8,14)
-    map[by][bx + 1] = BRICK;       // 基地右侧 (10,14)
-    // 上方完整横排（U型的顶部横梁）
-    map[by - 1][bx - 1] = BRICK;   // 左上 (8,13)
-    map[by - 1][bx] = BRICK;       // 正上 (9,13)
-    map[by - 1][bx + 1] = BRICK;   // 右上 (10,13)
-    // U 型两侧向下延伸
-    map[by - 2][bx - 1] = BRICK;   // 左侧立柱上段 (8,12)
-    map[by - 2][bx + 1] = BRICK;   // 右侧立柱上段 (10,12)
+    // U 型左臂：两格高
+    map[by - 1][bx - 2] = BRICK;   // (7,13)
+    map[by - 2][bx - 2] = BRICK;   // (7,12)
+    // U 型右臂：两格高
+    map[by - 1][bx + 2] = BRICK;   // (11,13)
+    map[by - 2][bx + 2] = BRICK;   // (11,12)
+    // U 型底部横梁（连接左右臂，基地在中间）
+    map[by][bx - 2] = BRICK;       // (7,14)
+    map[by][bx - 1] = BRICK;       // (8,14)
+    map[by][bx + 1] = BRICK;       // (10,14)
+    map[by][bx + 2] = BRICK;       // (11,14)
 
     // 随机生成墙壁
     let density = 0.15 + wave * 0.02;
